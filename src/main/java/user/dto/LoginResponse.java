@@ -1,4 +1,4 @@
-package user.dto;
+package com.medium_clone.user.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

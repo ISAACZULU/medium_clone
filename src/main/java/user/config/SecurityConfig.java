@@ -35,6 +35,13 @@ public class SecurityConfig {
                 .and()
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/register", "/api/users/login").permitAll()
+                        .requestMatchers("/api/users/password-reset/**").permitAll()
+                        .requestMatchers("/api/profiles/**").permitAll()
+                        .requestMatchers("/api/articles").permitAll()
+                        .requestMatchers("/api/articles/{slug}").permitAll()
+                        .requestMatchers("/api/articles/tag/**").permitAll()
+                        .requestMatchers("/api/articles/search").permitAll()
+                        .requestMatchers("/api/articles/author/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -49,14 +49,6 @@ public class User {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private Set<Article> articles = new HashSet<>();
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private Set<Comment> comments = new HashSet<>();
-
     @ManyToMany
     @JoinTable(
             name = "user_following",
@@ -66,9 +58,15 @@ public class User {
     @Builder.Default
     private Set<User> following = new HashSet<>();
 
-    @ManyToMany(mappedBy = "followers")
+    @ManyToMany(mappedBy = "following")
     @Builder.Default
     private Set<User> followers = new HashSet<>();
+
+    @Column
+    private String bio;
+
+    @Column
+    private String image;
 
     @Override
     public boolean equals(Object o) {

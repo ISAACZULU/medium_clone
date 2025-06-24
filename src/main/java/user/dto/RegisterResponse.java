@@ -1,4 +1,4 @@
-package user.dto;
+package com.medium_clone.user.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,8 +15,12 @@ public class RegisterResponse {
     private String userId;
     private String username;
 
-    public RegisterResponse(String message, boolean b, String token, String userId, String username) {
-
+    public RegisterResponse(String message, boolean success, String token, String userId, String username) {
+        this.message = message;
+        this.success = success;
+        this.token = token;
+        this.userId = userId;
+        this.username = username;
     }
 
     public static RegisterResponse success(String message, String token, String userId, String username) {
