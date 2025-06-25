@@ -137,7 +137,32 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
             throw new IllegalArgumentException("Invalid engagement type: " + engagementType);
         }
 
-        // Check if engagement already exists
+        if (type == ArticleEngagement.EngagementType.CLAP) {
+            // Medium-style claps: increment up to 50 per user per article
+            Optional<ArticleEngagement> existingClap = engagementRepository
+                    .findByArticleIdAndUserIdAndType(articleId, user.getId(), type);
+            int maxClaps = 50;
+            if (existingClap.isPresent()) {
+                ArticleEngagement engagement = existingClap.get();
+                int current = engagement.getCount() != null ? engagement.getCount() : 0;
+                if (current < maxClaps) {
+                    engagement.setCount(Math.min(current + 1, maxClaps));
+                    engagement.setCreatedAt(LocalDateTime.now());
+                    engagementRepository.save(engagement);
+                }
+            } else {
+                ArticleEngagement engagement = ArticleEngagement.builder()
+                        .article(article)
+                        .user(user)
+                        .type(type)
+                        .count(1)
+                        .build();
+                engagementRepository.save(engagement);
+            }
+            return;
+        }
+
+        // Check if engagement already exists (for other types)
         Optional<ArticleEngagement> existingEngagement = engagementRepository
                 .findByArticleIdAndUserIdAndType(articleId, user.getId(), type);
 
@@ -174,6 +199,10 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
         }
         
         return stats;
+    }
+
+    public Long getTotalClaps(Long articleId) {
+        return engagementRepository.sumClapsByArticleId(articleId);
     }
 
     private Pageable createPageable(String sortBy, String sortOrder, int page, int size) {

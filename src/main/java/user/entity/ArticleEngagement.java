@@ -37,11 +37,15 @@ public class ArticleEngagement {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = true)
+    private Integer count; // For CLAP type: number of claps by this user on this article
+
     public enum EngagementType {
         VIEW,      // User viewed the article
         LIKE,      // User liked the article
         BOOKMARK,  // User bookmarked the article
-        SHARE      // User shared the article
+        SHARE,     // User shared the article
+        CLAP       // User clapped (can be multiple times)
     }
 
     @Override

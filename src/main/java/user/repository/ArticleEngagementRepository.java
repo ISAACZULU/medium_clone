@@ -53,4 +53,11 @@ public interface ArticleEngagementRepository extends JpaRepository<ArticleEngage
            "AND a.published = true " +
            "ORDER BY a.publishedAt DESC")
     Page<Object[]> findArticlesByFollowedTags(@Param("userId") Long userId, Pageable pageable);
+
+    // Find claps by user for an article
+    Optional<ArticleEngagement> findByArticleIdAndUserIdAndType(Long articleId, Long userId, ArticleEngagement.EngagementType type);
+
+    // Sum all claps for an article
+    @Query("SELECT COALESCE(SUM(ae.count), 0) FROM ArticleEngagement ae WHERE ae.article.id = :articleId AND ae.type = 'CLAP'")
+    Long sumClapsByArticleId(@Param("articleId") Long articleId);
 } 

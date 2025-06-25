@@ -121,6 +121,23 @@ public class ArticleDiscoveryController {
         return discoveryService.advancedSearch(request);
     }
 
+    // Clap endpoint (Medium-style, increments by 1 per call, up to 50)
+    @PostMapping("/articles/{articleId}/clap")
+    public ResponseEntity<String> clap(@PathVariable Long articleId,
+                                      @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String email = jwtUtil.extractEmail(token);
+        discoveryService.trackEngagement(email, articleId, "CLAP");
+        return ResponseEntity.ok("Clapped!");
+    }
+
+    // Get total claps for an article
+    @GetMapping("/articles/{articleId}/claps")
+    public Map<String, Long> getTotalClaps(@PathVariable Long articleId) {
+        Long totalClaps = ((user.service.ArticleDiscoveryServiceImpl)discoveryService).getTotalClaps(articleId);
+        return Map.of("claps", totalClaps);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
