@@ -11,6 +11,7 @@ import user.repository.ArticleRepository;
 import user.repository.ArticleVersionRepository;
 import user.repository.UserRepository;
 import user.util.ArticleUtils;
+import user.service.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,14 +28,17 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleRepository articleRepository;
     private final ArticleVersionRepository articleVersionRepository;
     private final UserRepository userRepository;
+    private final TagService tagService;
 
     @Autowired
     public ArticleServiceImpl(ArticleRepository articleRepository, 
                             ArticleVersionRepository articleVersionRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            TagService tagService) {
         this.articleRepository = articleRepository;
         this.articleVersionRepository = articleVersionRepository;
         this.userRepository = userRepository;
+        this.tagService = tagService;
     }
 
     @Override
@@ -79,6 +83,8 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         Article savedArticle = articleRepository.save(article);
+        // Update tags usage
+        tagService.updateTagsForArticle(savedArticle.getId(), savedArticle.getTags());
         
         // Create initial version
         createArticleVersion(savedArticle, authorEmail, "Initial version");
@@ -129,6 +135,8 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         Article updatedArticle = articleRepository.save(article);
+        // Update tags usage
+        tagService.updateTagsForArticle(updatedArticle.getId(), updatedArticle.getTags());
         return mapToArticleResponse(updatedArticle);
     }
 
@@ -177,6 +185,8 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         Article updatedArticle = articleRepository.save(article);
+        // Update tags usage
+        tagService.updateTagsForArticle(updatedArticle.getId(), updatedArticle.getTags());
         return mapToArticleResponse(updatedArticle);
     }
 
