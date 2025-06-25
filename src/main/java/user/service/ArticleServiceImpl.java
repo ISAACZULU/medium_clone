@@ -10,6 +10,7 @@ import com.medium_clone.user.entity.User;
 import user.repository.ArticleRepository;
 import user.repository.ArticleVersionRepository;
 import user.repository.UserRepository;
+import user.util.ArticleUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,23 +43,34 @@ public class ArticleServiceImpl implements ArticleService {
         User author = userRepository.findByEmail(authorEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        String slug = generateSlug(request.getTitle());
+        String slug = ArticleUtils.generateSlug(request.getTitle());
         
-        // Check if slug already exists
-        if (articleRepository.findBySlug(slug).isPresent()) {
-            slug = generateUniqueSlug(slug);
+        // Check if slug already exists and generate unique one
+        slug = ArticleUtils.generateUniqueSlug(slug, 
+            existingSlug -> articleRepository.findBySlug(existingSlug).isPresent());
+
+        // Extract tags from content if not provided
+        java.util.Set<String> tags = request.getTags();
+        if (tags == null || tags.isEmpty()) {
+            tags = ArticleUtils.extractTagsFromContent(request.getContent());
+        }
+
+        // Generate summary if not provided
+        String summary = request.getSummary();
+        if (summary == null || summary.trim().isEmpty()) {
+            summary = ArticleUtils.extractSummary(request.getContent(), 200);
         }
 
         Article article = Article.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
-                .summary(request.getSummary())
-                .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
+                .summary(summary)
+                .tags(tags)
                 .coverImageUrl(request.getCoverImageUrl())
                 .slug(slug)
                 .published(request.isPublished())
                 .author(author)
-                .readTime(calculateReadTime(request.getContent()))
+                .readTime(ArticleUtils.calculateReadTime(request.getContent()))
                 .viewCount(0)
                 .build();
 
@@ -95,13 +107,14 @@ public class ArticleServiceImpl implements ArticleService {
         article.setSummary(request.getSummary());
         article.setTags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>());
         article.setCoverImageUrl(request.getCoverImageUrl());
-        article.setReadTime(calculateReadTime(request.getContent()));
+        article.setReadTime(ArticleUtils.calculateReadTime(request.getContent()));
 
         // Update slug if title changed
-        String newSlug = generateSlug(request.getTitle());
+        String newSlug = ArticleUtils.generateSlug(request.getTitle());
         if (!newSlug.equals(article.getSlug())) {
             if (articleRepository.findBySlug(newSlug).isPresent()) {
-                newSlug = generateUniqueSlug(newSlug);
+                newSlug = ArticleUtils.generateUniqueSlug(newSlug, 
+                    existingSlug -> articleRepository.findBySlug(existingSlug).isPresent());
             }
             article.setSlug(newSlug);
         }
@@ -142,13 +155,14 @@ public class ArticleServiceImpl implements ArticleService {
         article.setSummary(request.getSummary());
         article.setTags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>());
         article.setCoverImageUrl(request.getCoverImageUrl());
-        article.setReadTime(calculateReadTime(request.getContent()));
+        article.setReadTime(ArticleUtils.calculateReadTime(request.getContent()));
 
         // Update slug if title changed
-        String newSlug = generateSlug(request.getTitle());
+        String newSlug = ArticleUtils.generateSlug(request.getTitle());
         if (!newSlug.equals(article.getSlug())) {
             if (articleRepository.findBySlug(newSlug).isPresent()) {
-                newSlug = generateUniqueSlug(newSlug);
+                newSlug = ArticleUtils.generateUniqueSlug(newSlug, 
+                    existingSlug -> articleRepository.findBySlug(existingSlug).isPresent());
             }
             article.setSlug(newSlug);
         }
@@ -316,7 +330,7 @@ public class ArticleServiceImpl implements ArticleService {
         article.setTags(version.getTags());
         article.setCoverImageUrl(version.getCoverImageUrl());
         article.setSlug(version.getSlug());
-        article.setReadTime(calculateReadTime(version.getContent()));
+        article.setReadTime(ArticleUtils.calculateReadTime(version.getContent()));
 
         Article restoredArticle = articleRepository.save(article);
         return mapToArticleResponse(restoredArticle);
@@ -358,29 +372,6 @@ public class ArticleServiceImpl implements ArticleService {
                 .build();
 
         articleVersionRepository.save(version);
-    }
-
-    private String generateSlug(String title) {
-        return title.toLowerCase()
-                .replaceAll("[^a-z0-9\\s-]", "")
-                .replaceAll("\\s+", "-")
-                .replaceAll("-+", "-")
-                .trim();
-    }
-
-    private String generateUniqueSlug(String baseSlug) {
-        String slug = baseSlug;
-        int counter = 1;
-        while (articleRepository.findBySlug(slug).isPresent()) {
-            slug = baseSlug + "-" + counter++;
-        }
-        return slug;
-    }
-
-    private int calculateReadTime(String content) {
-        // Simple calculation: ~200 words per minute
-        int wordCount = content.split("\\s+").length;
-        return Math.max(1, wordCount / 200);
     }
 
     private ArticleResponse mapToArticleResponse(Article article) {
