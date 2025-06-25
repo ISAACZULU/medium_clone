@@ -11,6 +11,9 @@ import user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import user.service.NotificationService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,12 +25,14 @@ public class CommentServiceImpl implements CommentService {
     private final CommentRepository commentRepository;
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Autowired
-    public CommentServiceImpl(CommentRepository commentRepository, ArticleRepository articleRepository, UserRepository userRepository) {
+    public CommentServiceImpl(CommentRepository commentRepository, ArticleRepository articleRepository, UserRepository userRepository, NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -51,6 +56,21 @@ public class CommentServiceImpl implements CommentService {
                 .flagged(false)
                 .build();
         Comment saved = commentRepository.save(comment);
+        // Notify article author if not self
+        if (!article.getAuthor().getId().equals(user.getId())) {
+            notificationService.notifyComment(article.getAuthor(), user, article, saved);
+        }
+        // Notify mentioned users
+        Pattern mentionPattern = Pattern.compile("@([A-Za-z0-9_]+)");
+        Matcher matcher = mentionPattern.matcher(request.getContent());
+        while (matcher.find()) {
+            String mentionedUsername = matcher.group(1);
+            userRepository.findByUsername(mentionedUsername).ifPresent(mentionedUser -> {
+                if (!mentionedUser.getId().equals(user.getId())) {
+                    notificationService.notifyMention(mentionedUser, user, article, saved);
+                }
+            });
+        }
         return toResponse(saved, true);
     }
 

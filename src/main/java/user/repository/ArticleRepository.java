@@ -32,6 +32,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
            "LOWER(a.content) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Article> searchArticles(@Param("search") String search, Pageable pageable);
     
+    List<Article> findByAuthorIdAndPublishedFalse(Long authorId);
     List<Article> findByAuthorIdAndPublishedTrue(Long authorId);
     
     // Advanced search with multiple filters

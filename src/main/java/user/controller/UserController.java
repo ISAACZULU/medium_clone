@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 
+import user.dto.NotificationPreferencesRequest;
+import user.dto.NotificationPreferencesResponse;
+
 @RestController
 @RequestMapping("/api/users")
 @Validated
@@ -104,6 +107,34 @@ public class UserController {
     @GetMapping("/following/{username}")
     public List<String> getFollowing(@PathVariable String username) {
         return userService.getFollowing(username);
+    }
+
+    @GetMapping("/me/notification-preferences")
+    public NotificationPreferencesResponse getNotificationPreferences(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String email = jwtUtil.extractEmail(token);
+        User user = userService.getUserByEmail(email);
+        NotificationPreferencesResponse response = new NotificationPreferencesResponse();
+        response.setReceiveFollowNotifications(user.isReceiveFollowNotifications());
+        response.setReceiveClapNotifications(user.isReceiveClapNotifications());
+        response.setReceiveCommentNotifications(user.isReceiveCommentNotifications());
+        response.setReceiveMentionNotifications(user.isReceiveMentionNotifications());
+        response.setReceiveRecommendationNotifications(user.isReceiveRecommendationNotifications());
+        return response;
+    }
+
+    @PatchMapping("/me/notification-preferences")
+    public NotificationPreferencesResponse updateNotificationPreferences(@RequestHeader("Authorization") String authHeader, @RequestBody NotificationPreferencesRequest prefs) {
+        String token = authHeader.replace("Bearer ", "");
+        String email = jwtUtil.extractEmail(token);
+        User user = userService.updateNotificationPreferences(email, prefs);
+        NotificationPreferencesResponse response = new NotificationPreferencesResponse();
+        response.setReceiveFollowNotifications(user.isReceiveFollowNotifications());
+        response.setReceiveClapNotifications(user.isReceiveClapNotifications());
+        response.setReceiveCommentNotifications(user.isReceiveCommentNotifications());
+        response.setReceiveMentionNotifications(user.isReceiveMentionNotifications());
+        response.setReceiveRecommendationNotifications(user.isReceiveRecommendationNotifications());
+        return response;
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -71,6 +71,9 @@ public class Article {
     @Builder.Default
     private Set<ArticleVersion> versions = new HashSet<>();
 
+    @Column
+    private LocalDateTime lastSavedAt; // For draft auto-save
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -82,4 +85,11 @@ public class Article {
     public int hashCode() {
         return getClass().hashCode();
     }
+
+    public boolean isPublished() { return published; }
+    public void setPublished(boolean published) { this.published = published; }
+    public LocalDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+    public LocalDateTime getLastSavedAt() { return lastSavedAt; }
+    public void setLastSavedAt(LocalDateTime lastSavedAt) { this.lastSavedAt = lastSavedAt; }
 } 

@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/display/articles/{slug}/related").permitAll()
                         .requestMatchers("/api/display/validate-slug/**").permitAll()
                         .requestMatchers("/api/display/calculate-read-time").permitAll()
+                        .requestMatchers("/api/drafts/**").authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

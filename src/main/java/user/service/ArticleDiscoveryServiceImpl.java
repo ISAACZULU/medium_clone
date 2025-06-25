@@ -27,14 +27,17 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
     private final ArticleRepository articleRepository;
     private final ArticleEngagementRepository engagementRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Autowired
     public ArticleDiscoveryServiceImpl(ArticleRepository articleRepository,
                                      ArticleEngagementRepository engagementRepository,
-                                     UserRepository userRepository) {
+                                     UserRepository userRepository,
+                                     NotificationService notificationService) {
         this.articleRepository = articleRepository;
         this.engagementRepository = engagementRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -49,7 +52,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
 
         // Get articles from followed authors
         if (request.isIncludeFollowedAuthors()) {
-            Page<Article> followedAuthorArticles = articleRepository.findByAuthorUsernameIn(
+            Page<Article> followedAuthorArticles = articleRepository.findByAuthorUsernameInAndPublishedTrue(
                 user.getFollowing().stream().map(User::getUsername).collect(Collectors.toList()),
                 pageable
             );
@@ -84,7 +87,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
     @Transactional(readOnly = true)
     public Page<ArticleResponse> getTrendingArticles(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "viewCount", "publishedAt"));
-        Page<Article> trendingArticles = articleRepository.findTrendingByViews(pageable);
+        Page<Article> trendingArticles = articleRepository.findTrendingByViewsAndPublishedTrue(pageable);
         return trendingArticles.map(this::mapToArticleResponse);
     }
 
@@ -93,7 +96,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
     public Page<ArticleResponse> advancedSearch(ArticleSearchRequest request) {
         Pageable pageable = createPageable(request.getSortBy(), request.getSortOrder(), request.getPage(), request.getSize());
         
-        Page<Article> articles = articleRepository.advancedSearch(
+        Page<Article> articles = articleRepository.advancedSearchAndPublished(
             request.getKeywords(),
             request.getAuthorUsername(),
             request.getFromDate(),
@@ -109,7 +112,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
     @Transactional(readOnly = true)
     public Page<ArticleResponse> searchByTags(Set<String> tags, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
-        Page<Article> articles = articleRepository.findByMultipleTags(tags, (long) tags.size(), pageable);
+        Page<Article> articles = articleRepository.findByMultipleTagsAndPublishedTrue(tags, (long) tags.size(), pageable);
         return articles.map(this::mapToArticleResponse);
     }
 
@@ -117,7 +120,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
     @Transactional(readOnly = true)
     public Page<ArticleResponse> getRecentArticles(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
-        Page<Article> recentArticles = articleRepository.findRecentArticles(pageable);
+        Page<Article> recentArticles = articleRepository.findRecentArticlesAndPublishedTrue(pageable);
         return recentArticles.map(this::mapToArticleResponse);
     }
 
@@ -127,7 +130,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Article article = articleRepository.findById(articleId)
+        Article article = articleRepository.findByIdAndPublishedTrue(articleId)
                 .orElseThrow(() -> new IllegalArgumentException("Article not found"));
 
         ArticleEngagement.EngagementType type;
@@ -140,7 +143,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
         if (type == ArticleEngagement.EngagementType.CLAP) {
             // Medium-style claps: increment up to 50 per user per article
             Optional<ArticleEngagement> existingClap = engagementRepository
-                    .findByArticleIdAndUserIdAndType(articleId, user.getId(), type);
+                    .findByArticleIdAndUserIdAndTypeAndPublishedTrue(articleId, user.getId(), type);
             int maxClaps = 50;
             if (existingClap.isPresent()) {
                 ArticleEngagement engagement = existingClap.get();
@@ -159,12 +162,16 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
                         .build();
                 engagementRepository.save(engagement);
             }
+            // Notify article author if not clapping own article
+            if (!article.getAuthor().getId().equals(user.getId())) {
+                notificationService.notifyClap(article.getAuthor(), user, article);
+            }
             return;
         }
 
         // Check if engagement already exists (for other types)
         Optional<ArticleEngagement> existingEngagement = engagementRepository
-                .findByArticleIdAndUserIdAndType(articleId, user.getId(), type);
+                .findByArticleIdAndUserIdAndTypeAndPublishedTrue(articleId, user.getId(), type);
 
         if (existingEngagement.isPresent()) {
             // Update existing engagement timestamp
@@ -194,7 +201,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
         Map<String, Long> stats = new HashMap<>();
         
         for (ArticleEngagement.EngagementType type : ArticleEngagement.EngagementType.values()) {
-            Long count = engagementRepository.countByArticleIdAndType(articleId, type);
+            Long count = engagementRepository.countByArticleIdAndTypeAndPublishedTrue(articleId, type);
             stats.put(type.name().toLowerCase(), count);
         }
         
@@ -202,7 +209,7 @@ public class ArticleDiscoveryServiceImpl implements ArticleDiscoveryService {
     }
 
     public Long getTotalClaps(Long articleId) {
-        return engagementRepository.sumClapsByArticleId(articleId);
+        return engagementRepository.sumClapsByArticleIdAndPublishedTrue(articleId);
     }
 
     private Pageable createPageable(String sortBy, String sortOrder, int page, int size) {

@@ -6,6 +6,7 @@ import com.medium_clone.user.dto.LoginRequest;
 import com.medium_clone.user.dto.LoginResponse;
 import com.medium_clone.user.dto.UpdateProfileRequest;
 import com.medium_clone.user.dto.UserProfileResponse;
+import user.dto.NotificationPreferencesRequest;
 
 import java.util.List;
 
@@ -20,4 +21,6 @@ public interface UserService {
     void unfollowUser(String followerEmail, String usernameToUnfollow);
     List<String> getFollowers(String username);
     List<String> getFollowing(String username);
+    User getUserByEmail(String email);
+    User updateNotificationPreferences(String email, NotificationPreferencesRequest prefs);
 }

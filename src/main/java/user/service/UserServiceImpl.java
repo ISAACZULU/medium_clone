@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import user.service.NotificationService;
+import user.dto.NotificationPreferencesRequest;
 
 import java.util.List;
 
@@ -22,12 +24,14 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final NotificationService notificationService;
 
     @Autowired
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -174,6 +178,7 @@ public class UserServiceImpl implements UserService {
 
         follower.getFollowing().add(toFollow);
         userRepository.save(follower);
+        notificationService.notifyFollow(toFollow, follower);
     }
 
     @Override
@@ -201,5 +206,25 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUsername(username)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
         return user.getFollowing().stream().map(User::getUsername).toList();
+    }
+
+    @Override
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    @Override
+    @Transactional
+    public User updateNotificationPreferences(String email, NotificationPreferencesRequest prefs) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setReceiveFollowNotifications(prefs.isReceiveFollowNotifications());
+        user.setReceiveClapNotifications(prefs.isReceiveClapNotifications());
+        user.setReceiveCommentNotifications(prefs.isReceiveCommentNotifications());
+        user.setReceiveMentionNotifications(prefs.isReceiveMentionNotifications());
+        user.setReceiveRecommendationNotifications(prefs.isReceiveRecommendationNotifications());
+        user.setEmailNotificationsEnabled(prefs.isEmailNotificationsEnabled());
+        user.setPushNotificationsEnabled(prefs.isPushNotificationsEnabled());
+        user.setEmailDigestFrequency(User.EmailDigestFrequency.valueOf(prefs.getEmailDigestFrequency()));
+        return userRepository.save(user);
     }
 }
